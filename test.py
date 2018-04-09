@@ -15,12 +15,18 @@ train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entropy)
 
 init = tf.initialize_all_variables()
 sess = tf.Session()
+
+tf.summary.scalar("cross_entropy", cross_entropy)
+merged_summary_op = tf.summary.merge_all()
+summary_writer = tf.summary.FileWriter('mnist_logs/', sess.graph)
+
 sess.run(init)
 
 for i in range(1000):
   batch_xs, batch_ys = mnist.train.next_batch(100)
   sess.run(train_step, feed_dict={x: batch_xs, y_: batch_ys})
-
+  summary_str = sess.run(merged_summary_op)
+  summary_writer.add_summary(summary_str, i)
 
 correct_prediction = tf.equal(tf.argmax(y,1), tf.argmax(y_,1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))

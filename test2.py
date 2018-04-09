@@ -52,25 +52,36 @@ y_conv=tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
 
 sess = tf.InteractiveSession()
 
-
-
-
-
-
 cross_entropy = -tf.reduce_sum(y_*tf.log(y_conv))
 train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
 correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
 
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-sess.run(tf.initialize_all_variables())
+sess.run(tf.global_variables_initializer())
 
 saver = tf.train.Saver()
 #saver.save(sess, 'CheckPoint/' + "Sample")
 saver.restore(sess, 'CheckPoint/' + "Sample")
 
+'''batch = mnist.train.next_batch(1)
+prediction=tf.argmax(y_conv,1)
+print batch[1]
+predint=prediction.eval(feed_dict={x: batch[0],keep_prob: 1.0}, session=sess)
+print(h_conv2)
+
+print('recognize result:')
+print(predint[0])
+'''
+
+merged_summary_op = tf.summary.merge_all()
+summary_writer = tf.summary.FileWriter('mnist_logs/', sess.graph)
+
+
 for i in range(20000):
   batch = mnist.train.next_batch(50)
-  if i%100 == 0:
+  if i%10 == 0:
+    summary_str = sess.run(merged_summary_op,feed_dict={x: batch[0], y_: batch[1]})
+    summary_writer.add_summary(summary_str, i)
     train_accuracy = accuracy.eval(feed_dict={
         x:batch[0], y_: batch[1], keep_prob: 1.0})
     print "step %d, training accuracy %g"%(i, train_accuracy)
