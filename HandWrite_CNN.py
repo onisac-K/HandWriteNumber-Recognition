@@ -209,7 +209,7 @@ def feed_dict(train):
 
 
 saver = tf.train.Saver()
-#saver.restore(sess, Save_dir + "/HandWrite")
+saver.restore(sess, Save_dir + "/HandWrite")
 
 
 for i in range(max_steps):
