@@ -8,11 +8,11 @@ learning_rate = 1e-4
 REGULARIZATION_RATE = 0.0001
 dropout = 0.9
 data_dir = './MNIST_data'
-log_dir = './MNIST_logs'
-Save_dir = './MNIST_Model'
+log_dir = './MNIST_logs_CNN'
+Save_dir = './MNIST_Model_CNN'
 
 #default regularizer
-#regularizer = tf.contrib.layers.l2_regularizer(REGULARIZATION_RATE)
+regularizer = tf.contrib.layers.l2_regularizer(REGULARIZATION_RATE)
 
 # get the data
 mnist = input_data.read_data_sets(data_dir,one_hot = True)
@@ -70,6 +70,7 @@ def variable_summaries(var):
 '''
 
 # neural network
+
 def nn_layer(input_tensor, input_dim, output_dim, layer_name, act=tf.nn.relu):
     # 设置命名空间
     with tf.name_scope(layer_name):
@@ -91,25 +92,82 @@ def nn_layer(input_tensor, input_dim, output_dim, layer_name, act=tf.nn.relu):
     # 返回激励层的最终输出
     return activations
 
-hidden1 = nn_layer(x, 784, 500, 'layer1')
-
-# Create dropout layer
 with tf.name_scope('dropout'):
     keep_prob = tf.placeholder(tf.float32)
     tf.summary.scalar('dropout_keep_probability', keep_prob)
-    dropped = tf.nn.dropout(hidden1, keep_prob)
 
 
-y = nn_layer(dropped, 500, 10, 'layer2', act=tf.identity)
+def nn_layer_CNN(input_tensor, act=tf.nn.relu):
+    # convolution one
+    with tf.name_scope('convolution_one'):
+        with tf.name_scope('weights'):
+            weights_one = weight_variable([5,5,1,32], regularizer)
+        with tf.name_scope('biases'):
+            bias_one = bias_variable([32])
+            output_convolution1 = max_pool_2x2(act(conv2d(input_tensor, weights_one) + bias_one))
+
+    # convolution two
+    with tf.name_scope('convolution_two'):
+        with tf.name_scope('weights'):
+            weights_two = weight_variable([5,5,32,64], regularizer)
+        with tf.name_scope('biases'):
+            bias_two = bias_variable([64])
+            output_convolution2 = max_pool_2x2(act(conv2d(output_convolution1, weights_two) + bias_two))
+    # full_connect
+    with tf.name_scope('full_connect'):
+        input_FC = tf.reshape(output_convolution2,[-1, 7*7*64])
+        with tf.name_scope('weights'):
+            weights_FC = weight_variable([7*7*64, 1024], regularizer)
+        with tf.name_scope('biases'):
+            bias_FC = bias_variable([1024])
+            output_FC = act(tf.matmul(input_FC, weights_FC) + bias_FC)
+    # output
+    with tf.name_scope('Final_Output'):
+        # add the dropout\
+        #tf.summary.scalar('dropout_keep_probability', keep_prob)
+        output_FC_dropout = tf.nn.dropout(output_FC, keep_prob)
+        with tf.name_scope('weights'):
+            weights_FO = weight_variable([1024, 10], regularizer)
+        with tf.name_scope('biases'):
+            bias_FO = bias_variable([10])
+            output_FO = tf.nn.softmax(tf.matmul(output_FC_dropout, weights_FO) + bias_FO)
+
+    return output_FO
+
+y = nn_layer_CNN(image_shaped_input);
+
+'''
+W_conv1 = weight_variable([5, 5, 1, 32], regularizer)
+b_conv1 = bias_variable([32])
+x_image = tf.reshape(x, [-1,28,28,1])
+h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
+h_pool1 = max_pool_2x2(h_conv1)
+
+W_conv2 = weight_variable([5, 5, 32, 64], regularizer)
+b_conv2 = bias_variable([64])
+
+h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
+h_pool2 = max_pool_2x2(h_conv2)
+
+W_fc1 = weight_variable([7 * 7 * 64, 1024], regularizer)
+b_fc1 = bias_variable([1024])
+
+h_pool2_flat = tf.reshape(h_pool2, [-1, 7*7*64])
+h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+
+keep_prob = tf.placeholder("float")
+h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
+
+W_fc2 = weight_variable([1024, 10], regularizer)
+b_fc2 = bias_variable([10])
+
+y=tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
+'''
 
 # 创建损失函数
 with tf.name_scope('loss'):
     # 计算交叉熵损失（每个样本都会有一个损失）
-    diff = tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y)
-    with tf.name_scope('total'):
-        cross_entropy = tf.reduce_mean(diff)
-        # 计算所有样本交叉熵损失的均值
-        #cross_entropy = tf.reduce_mean(diff) + tf.add_n(tf.get_collection('losses'))
+    cross_entropy = -tf.reduce_sum(y_*tf.log(y)) + tf.add_n(tf.get_collection('losses'))
     tf.summary.scalar('loss', cross_entropy)
 
 
